@@ -1,0 +1,5 @@
+django
+pyyaml
+djangorestframework
+requests
+django-cors-headers
