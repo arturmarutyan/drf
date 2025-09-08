@@ -1,5 +1,6 @@
-from rest_framework import generics, mixins, permissions, authentication
-
+from rest_framework import generics, mixins, permissions, authentication, pagination
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from .models import Product
 from .serializers import ProductSerializer
 from api.authentication import TokenAuthentication
@@ -12,6 +13,9 @@ class IsOwner(permissions.BasePermission):
         # Проверяем, что владелец продукта - это текущий пользователь
         return obj.owner == request.user
 
+class MyPagination(pagination.PageNumberPagination):
+    page_size = 10
+
 class ProductListCreateAPIView(generics.ListCreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
@@ -19,15 +23,26 @@ class ProductListCreateAPIView(generics.ListCreateAPIView):
         authentication.SessionAuthentication,
         TokenAuthentication,
     ]
+    paginator_classes = [MyPagination]
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_queryset(self):
+    def get_queryset(self, *args, **kwargs):
         print(self.request.user)
-        return Product.objects.filter(owner=self.request.user)
+        qs = super().get_queryset(*args, **kwargs)
+        return qs.filter(owner=self.request.user)
     
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
+
+# class ProductSearchAPIView(APIView):
+#     def get(self, request):
+#         search_query = request.GET.get('q', '')
+#         products = Product.objects.search(search_query)
+#         serializer = ProductSerializer(products, many=True)
+#         return Response({'search_query': search_query,
+#                          'count': products.count(),
+#                          'results': serializer.data})
 
 class ProductDetailAPIView(generics.RetrieveAPIView, IsOwner):
     queryset = Product.objects.all()
